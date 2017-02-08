@@ -1247,7 +1247,7 @@ class CodeGenerator(NodeVisitor):
                     raise nodes.Impossible()
                 const = child.as_const(frame.eval_ctx)
             except nodes.Impossible:
-                body.append(child)
+                body.append((child, child))
                 continue
             # the frame can't be volatile here, becaus otherwise the
             # as_const() function would raise an Impossible exception
@@ -1262,12 +1262,12 @@ class CodeGenerator(NodeVisitor):
             except Exception:
                 # if something goes wrong here we evaluate the node
                 # at runtime for easier debugging
-                body.append(child)
+                body.append((child, child))
                 continue
             if body and isinstance(body[-1], list):
-                body[-1].append(const)
+                body[-1].append((child, const))
             else:
-                body.append([const])
+                body.append((child, [const]))
 
         # if we have less than 3 nodes or a buffer we yield or extend/append
         if len(body) < 3 or frame.buffer is not None:
@@ -1278,11 +1278,11 @@ class CodeGenerator(NodeVisitor):
                 else:
                     self.writeline('%s.extend((' % frame.buffer)
                 self.indent()
-            for item in body:
+            for node, item in body:
                 if isinstance(item, list):
                     val = repr(concat(item))
                     if frame.buffer is None:
-                        self.writeline('yield ' + val)
+                        self.writeline('yield ' + val, node)
                     else:
                         self.writeline(val + ',')
                 else:
@@ -1317,7 +1317,7 @@ class CodeGenerator(NodeVisitor):
         else:
             format = []
             arguments = []
-            for item in body:
+            for node, item in body:
                 if isinstance(item, list):
                     format.append(concat(item).replace('%', '%%'))
                 else:
